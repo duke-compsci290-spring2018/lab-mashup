@@ -1,7 +1,9 @@
 <template>
+<div>
+    <h1>Recent Earthquakes Plotted</h1>
     <gmap-map
         :center="center"
-        :zoom="3"
+        :zoom="2"
         @click="addMarker"
         style="height: 480px;"
     >
@@ -12,53 +14,51 @@
             :clickable="true"
             :draggable="true"
             @click="center = m.position"
-        ></gmap-marker>
+        >
+        </gmap-marker>
         <gmap-circle
             v-for="(c, index) in circles"
-            :key="c.radius"
+            :key="c.id"
             :center="c.center"
             :radius="c.radius"
             :options="c.options"
+            @mouseover="infoText = c.text"
+            @mouseout="infoText = ''"
         ></gmap-circle>
+        <div slot="visible">
+            <div style="bottom: 0; left: 0; background-color: blue; color: white; position: absolute; z-index: 100">
+              {{infoText}}
+            </div>
+        </div>
     </gmap-map>
+</div>
 </template>
 
 <script>
 var USGS_API_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson'
+var circleOptions = {
+    strokeColor: '#FF0000',
+    strokeOpacity: 0.8,
+    strokeWeight: 1,
+    fillColor: '#FF0000',
+    fillOpacity: 0.3
+}
 
 export default {
     name: 'App',
     data () {
         return {
+            infoText: '',
             center: {
                 lat: 40,
                 lng: -35
             },
             markers: [
                 {
-                    position: { lat: 35.99, lng: -78.89}, // Durham, NC
-                },
-                {
-                    position: { lat: 48.85, lng: 2.35},   // Paris, France
+                    position: { lat: 35.99, lng: -78.89 } // Durham, NC
                 }
             ],
-            circles: [
-                {
-                    center: { lat: 35.99, lng: -78.89},  // Durham, NC
-                    radius: 100000,
-                    options: {
-                        strokeColor: '#FF0000',
-                        strokeOpacity: 0.8,
-                        strokeWeight: 1,
-                        fillColor: '#FF0000',
-                        fillOpacity: 0.3
-                    }
-                },
-                {
-                    center: { lat: 40, lng: -35},   // Paris, France
-                    radius: 500000
-                }
-            ]
+            circles: []
         }
     },
     methods: {
@@ -70,8 +70,19 @@ export default {
         getEarthquakeData (url) {
             fetch(url).then(response => response.json())
                       .then(data => {
-                            // TODO: create circles to represent significant recent earthquakes
-                            console.log(data)
+                            data.features.forEach(e => {
+                                this.circles.push({
+                                    id: e.id,
+                                    center: {
+                                        lng: e.geometry.coordinates[0],
+                                        lat: e.geometry.coordinates[1]
+                                    },
+                                    radius: e.properties.mag * 60000,
+                                    text: e.properties.title,
+                                    options: circleOptions
+                                })
+                            })
+                            console.log(this.circles.length)
                        })
                       .catch(error => console.log(error))
         }
